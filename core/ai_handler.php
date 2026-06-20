@@ -19,7 +19,7 @@ if (empty($userPrompt)) {
 }
 
 // --- CONFIGURATION ---
-$apiKey = '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'; // <--- Paste your key here
+$apiKey = getenv('OPENROUTER_API_KEY'); // <--- Paste your key here
 
 /**
  * Function to call OpenRouter API with a specific model
