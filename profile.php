@@ -1,5 +1,7 @@
 <?php
-require_once 'includes/header.php'; // Use main header
+require_once 'core/session.php';
+require_once 'core/functions.php';
+
 
 // Get logged-in user ID
 $user_id = $_SESSION['user_id'];
@@ -38,6 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     $email = sanitize($_POST['email']);
     $phone = sanitize($_POST['phone'] ?? '');
     $address = sanitize($_POST['address'] ?? '');
+    $guardian_name = sanitize($_POST['guardian_name'] ?? '');
+    $emergency_contact = sanitize($_POST['emergency_contact'] ?? '');
 
     // Handle Avatar Upload
     $avatarPath = $user['avatar']; // Keep old avatar by default
@@ -58,8 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     }
 
     // Update users table
-    $stmt = $pdo->prepare('UPDATE users SET name=?, email=?, avatar=? WHERE id=?');
-    $stmt->execute([$name, $email, $avatarPath, $user_id]);
+    $stmt = $pdo->prepare('UPDATE users SET name=?, email=?, avatar=?, guardian_name=?, emergency_contact=? WHERE id=?');
+    $stmt->execute([$name, $email, $avatarPath, $guardian_name, $emergency_contact, $user_id]);
 
     // Update or insert student_profiles table
     if ($profile) {
@@ -102,6 +106,8 @@ if (isset($_GET['msg'])) {
     if ($_GET['msg'] == 'updated') $message = 'Profile updated successfully!';
     if ($_GET['msg'] == 'pw_changed') $message = 'Password changed successfully!';
 }
+
+require_once 'includes/header.php'; // HTML output starts inside this file
 ?>
 
 <div class="row">
@@ -182,6 +188,14 @@ if (isset($_GET['msg'])) {
                         <div class="col-md-6 mb-3">
                             <label>Identity No (CNIC)</label>
                             <input type="text" class="form-control" value="<?= htmlspecialchars($user['identity_no'] ?? '') ?>" disabled>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Guardian Name</label>
+                            <input type="text" name="guardian_name" class="form-control" value="<?= htmlspecialchars($user['guardian_name'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Emergency Contact</label>
+                            <input type="text" name="emergency_contact" class="form-control" value="<?= htmlspecialchars($user['emergency_contact'] ?? '') ?>">
                         </div>
                         <div class="col-md-12 mb-3">
                             <label>Profile Picture</label>

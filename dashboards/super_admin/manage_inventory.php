@@ -115,6 +115,7 @@ $items = $pdo->query("SELECT * FROM inventory ORDER BY category, item_name")->fe
         <ul class="nav nav-pills mb-5 justify-content-center bg-light p-2 rounded-pill shadow-sm d-inline-flex" style="margin-left: auto; margin-right: auto; display: flex !important;">
             <li class="nav-item"><a class="nav-link active rounded-pill px-4" href="manage_inventory.php"><i class="bi bi-boxes"></i> GENERAL STOCK</a></li>
             <li class="nav-item"><a class="nav-link rounded-pill px-4" href="manage_assets.php"><i class="bi bi-upc-scan"></i> TRACKABLE ASSETS</a></li>
+            <li class="nav-item"><a class="nav-link rounded-pill px-4" href="allocate_assets.php"><i class="bi bi-person-check"></i> ALLOCATIONS</a></li>
         </ul>
 
         <?php if(isset($success)): ?><div class="alert alert-success rounded-3"><?= $success ?></div><?php endif; ?>

@@ -45,7 +45,7 @@ if (!$fee) die("Receipt not found or access denied.");
 
 <div class="receipt-box">
     <div class="header">
-        <div class="logo">Universal Hostel</div>
+        <div class="logo">University Hostel</div>
         <p>Official Fee Receipt</p>
         <small>Date: <?= date('d M Y') ?></small>
     </div>

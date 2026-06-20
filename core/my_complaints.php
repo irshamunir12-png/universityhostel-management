@@ -63,7 +63,12 @@ $my_complaints = $stmt->fetchAll();
                         <input type="text" name="title" class="form-control" placeholder="e.g. Room light not working" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Description</label>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0">Description</label>
+                            <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2 fw-bold" style="font-size: 0.7rem;" data-bs-toggle="modal" data-bs-target="#globalAIModal">
+                                <i class="bi bi-stars"></i> AI HELP
+                            </button>
+                        </div>
                         <textarea name="description" class="form-control" rows="4" placeholder="Please provide details about the issue." required></textarea>
                     </div>
                     <button type="submit" name="submit_complaint" class="btn btn-primary w-100">Submit Complaint</button>

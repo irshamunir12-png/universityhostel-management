@@ -2,6 +2,36 @@
 require_once '../../includes/header.php';
 require_once '../../core/functions.php';
 
+// --- DATABASE REPAIR: Ensure dispute_reports table exists with correct columns ---
+$pdo->exec("CREATE TABLE IF NOT EXISTS `dispute_reports` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `reporting_user_id` int(11) NOT NULL,
+  `reported_user_id` int(11) NOT NULL,
+  `reason_category` varchar(100) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `status` enum('open','warning_issued','resolved','closed') DEFAULT 'open',
+  `admin_remarks` text DEFAULT NULL,
+  `created_at` timestamp DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+// Ensure old tables get new columns (incase table existed but was outdated)
+try { $pdo->query("SELECT reported_user_id FROM dispute_reports LIMIT 1"); } catch (Exception $e) {
+    $pdo->exec("ALTER TABLE dispute_reports ADD COLUMN reporting_user_id INT NOT NULL AFTER id, ADD COLUMN reported_user_id INT NOT NULL AFTER reporting_user_id, ADD COLUMN reason_category VARCHAR(100) AFTER reported_user_id, ADD COLUMN description TEXT AFTER reason_category, ADD COLUMN admin_remarks TEXT AFTER status");
+    $pdo->exec("ALTER TABLE dispute_reports MODIFY COLUMN status ENUM('open','warning_issued','resolved','closed') DEFAULT 'open'");
+}
+
+// --- DATABASE REPAIR: Ensure student_warnings table exists ---
+$pdo->exec("CREATE TABLE IF NOT EXISTS `student_warnings` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `dispute_id` int(11) DEFAULT NULL,
+  `warning_text` text NOT NULL,
+  `issued_by_id` int(11) NOT NULL,
+  `issued_at` timestamp DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
 // Handle Actions (Warning, Resolve, Close)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_dispute'])) {
     $dispute_id = (int)$_POST['dispute_id'];

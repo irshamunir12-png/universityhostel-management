@@ -1,399 +1,166 @@
 <?php
-require_once '../../includes/header.php';
+require_once '../../core/session.php';
 require_once '../../core/functions.php';
-// Fetch Roles for Dropdown
-$roles = $pdo->query("SELECT * FROM sys_roles")->fetchAll();
 
-// Auto-Fix: Ensure 'phone' column exists in users table (required for staff)
-try {
-    $pdo->query("SELECT phone FROM users LIMIT 1");
-} catch (Exception $e) {
-    $pdo->exec("ALTER TABLE users ADD COLUMN phone VARCHAR(25) DEFAULT NULL AFTER email");
-}
-
-// Auto-Fix: Ensure student_profiles has unique user_id index for reliable updates
-try {
-    $pdo->exec("ALTER TABLE student_profiles ADD UNIQUE INDEX (user_id)");
-} catch (Exception $e) { /* Index already exists or table not ready */ }
-
-// Handle Save Student (Logic Integrated with Profiles)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_student'])) {
+// 1. Handle Add/Update User Logic
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_user'])) {
+    $id = (int)$_POST['user_id'];
     $name = sanitize($_POST['name']);
-    $reg_no = sanitize($_POST['student_id']);
-    $uid = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
-    $address = sanitize($_POST['address']);
-    $contact = sanitize($_POST['contact']);
-    $dob = sanitize($_POST['dob']);
-    $gender = sanitize($_POST['gender']);
-    $password = password_hash("123456", PASSWORD_DEFAULT);
+    $email = sanitize($_POST['email']);
+    $password = $_POST['password'];
+    $role = sanitize($_POST['role']);
+    $reg_no = sanitize($_POST['registration_no']);
+    $id_no = sanitize($_POST['identity_no']);
+    $is_active = (int)$_POST['is_active'];
 
-    $pdo->beginTransaction();
     try {
-        if ($uid > 0) {
-            // Check duplicate registration_no for other users
-            $check = $pdo->prepare("SELECT id FROM users WHERE registration_no = ? AND id != ? AND is_deleted = 0");
-            $check->execute([$reg_no, $uid]);
-            if ($check->rowCount() > 0) throw new Exception("Registration number already exists.");
-
-            // UPDATE existing student
-            $stmt = $pdo->prepare("UPDATE users SET name = ?, registration_no = ? WHERE id = ?");
-            $stmt->execute([$name, $reg_no, $uid]);
-
-            $stmt2 = $pdo->prepare("INSERT INTO student_profiles (user_id, phone, gender, date_of_birth, address) 
-                                    VALUES (?, ?, ?, ?, ?) 
-                                    ON DUPLICATE KEY UPDATE phone=VALUES(phone), gender=VALUES(gender), date_of_birth=VALUES(date_of_birth), address=VALUES(address)");
-            $stmt2->execute([$uid, $contact, $gender, $dob, $address]);
-            $msg = "Student Updated Successfully!";
-        } else {
-            $email = strtolower(str_replace(' ', '', $name)) . rand(10, 99) . "@hostel.com";
-            // INSERT new student
-            $stmt = $pdo->prepare("INSERT INTO users (name, email, role, password, registration_no, is_active) VALUES (?, ?, 'student', ?, ?, 1)");
-            $stmt->execute([$name, $email, $password, $reg_no]);
-            $new_user_id = $pdo->lastInsertId();
-
-            $stmt2 = $pdo->prepare("INSERT INTO student_profiles (user_id, phone, gender, date_of_birth, address) VALUES (?, ?, ?, ?, ?)");
-            $stmt2->execute([$new_user_id, $contact, $gender, $dob, $address]);
-            $msg = "Student Registered Successfully!";
+        // Check for duplicate email
+        $check = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ? AND is_deleted = 0");
+        $check->execute([$email, $id]);
+        if ($check->fetch()) {
+            throw new Exception("Email address '$email' is already in use.");
         }
 
-        $pdo->commit();
-        header("Location: manage_users.php?std_msg=" . urlencode($msg));
+        if ($id > 0) {
+            // Update Existing User
+            if (!empty($password)) {
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, password = ?, role = ?, registration_no = ?, identity_no = ?, is_active = ? WHERE id = ?");
+                $stmt->execute([$name, $email, $hash, $role, $reg_no, $id_no, $is_active, $id]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, role = ?, registration_no = ?, identity_no = ?, is_active = ? WHERE id = ?");
+                $stmt->execute([$name, $email, $role, $reg_no, $id_no, $is_active, $id]);
+            }
+            $msg = "User updated successfully!";
+        } else {
+            // Create New User
+            if (empty($password)) throw new Exception("Password is required for new users.");
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, registration_no, identity_no, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $email, $hash, $role, $reg_no, $id_no, $is_active]);
+            $msg = "New user registered successfully!";
+        }
+        header("Location: manage_users.php?success_msg=" . urlencode($msg));
         exit;
     } catch (Exception $e) {
-        $pdo->rollBack();
-        $student_error = $e->getMessage();
+        $error = $e->getMessage();
     }
 }
 
-// Handle Save Staff
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_staff'])) {
-    $name = sanitize($_POST['staff_name']);
-    $email = sanitize($_POST['staff_email']);
-    $role = sanitize($_POST['staff_role']);
-    $contact = sanitize($_POST['staff_contact']);
-    $uid = isset($_POST['staff_user_id']) ? (int)$_POST['staff_user_id'] : 0;
-    $password = password_hash("123456", PASSWORD_DEFAULT); // Default password for staff
-
-    $pdo->beginTransaction();
-    try {
-        // Check if email already exists for another user
-        $check_email = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ? AND is_deleted = 0");
-        $check_email->execute([$email, $uid]);
-        if ($check_email->rowCount() > 0) {
-            throw new Exception("Email already exists for another user.");
-        }
-
-        if ($uid > 0) {
-            // UPDATE existing staff
-            $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, role = ?, phone = ? WHERE id = ?");
-            $stmt->execute([$name, $email, $role, $contact, $uid]);
-            $msg = "Staff Member Updated Successfully!";
-        } else {
-            // INSERT new staff
-            $stmt = $pdo->prepare("INSERT INTO users (name, email, role, password, phone, is_active) VALUES (?, ?, ?, ?, ?, 1)");
-            $stmt->execute([$name, $email, $role, $password, $contact]);
-            $msg = "Staff Member Registered Successfully!";
-        }
-        $pdo->commit();
-        header("Location: manage_users.php?stf_msg=" . urlencode($msg));
-        exit;
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $staff_error = $e->getMessage();
-    }
-}
-// Handle Password Reset
-if (isset($_POST['reset_password'])) {
-    $uid = (int)$_POST['user_id'];
-    $new_pass = $_POST['new_password'];
-    $hash = password_hash($new_pass, PASSWORD_DEFAULT);
-    $pdo->prepare("UPDATE users SET password = ? WHERE id = ?")->execute([$hash, $uid]);
-    $success = "Password reset successfully for User ID: $uid";
-}
-
-// Handle Soft Delete User
-if (isset($_GET['delete_user'])) {
-    $id = (int)$_GET['delete_user'];
-    $pdo->prepare("UPDATE users SET is_deleted = 1, is_active = 0, deleted_at = NOW() WHERE id = ?")->execute([$id]);
-    header("Location: manage_users.php?msg=deleted");
+// 2. Handle Delete (Soft Delete)
+if (isset($_GET['delete'])) {
+    $id = (int)$_GET['delete'];
+    $pdo->prepare("UPDATE users SET is_deleted = 1, deleted_at = NOW() WHERE id = ?")->execute([$id]);
+    header("Location: manage_users.php?success_msg=User account deactivated and moved to trash");
     exit;
 }
 
-// Fetch Students with their Profiles
-$students = $pdo->query("
-    SELECT u.id, u.name, u.registration_no, u.email, sp.address, sp.phone, sp.date_of_birth, sp.gender 
-    FROM users u 
-    LEFT JOIN student_profiles sp ON u.id = sp.user_id 
-    WHERE u.role = 'student' AND u.is_deleted = 0 
-    ORDER BY u.id DESC
-")->fetchAll();
-?>
-<?php
-// Fetch Staff Members
-$staff_members = $pdo->query("
-    SELECT u.id, u.name, u.email, u.phone, sr.role_name
-    FROM users u
-    JOIN sys_roles sr ON u.role = sr.role_key
-    WHERE u.role != 'student' AND u.is_deleted = 0 ORDER BY u.name")->fetchAll();
+// 3. Fetch Data
+$roles = $pdo->query("SELECT * FROM sys_roles ORDER BY role_name")->fetchAll();
+$users = $pdo->query("SELECT * FROM users WHERE is_deleted = 0 ORDER BY created_at DESC")->fetchAll();
+
+require_once '../../includes/header.php';
 ?>
 
 <style>
-    /* Hide dashboard breadcrumb bar entirely as requested */
     .app-content-header, .content-header, .breadcrumb { display: none !important; }
     .app-main { padding-top: 0 !important; }
-
-    .desktop-app-wrapper {
-        background: #ffffff;
-        border-radius: 20px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        overflow: hidden;
-        border: none;
-        margin-top: 10px;
-    }
-    .app-header-teal {
-        background: linear-gradient(to right, #2ecc71, #1abc9c);
- !important;
-        padding: 15px 25px;
-        display: flex;
-        align-items: center;
-        color: white;
-    }
-    .window-controls { display: flex; gap: 8px; }
-    .win-dot { width: 12px; height: 12px; border-radius: 50%; }
-    .dot-r { background: #ff5f56; }
-    .dot-y { background: #ffbd2e; }
-    .dot-g { background: #009a17; }
-
-    .app-header-teal > div, .app-header-teal > a { flex: 1; }
-    .app-title-purple {
-        color: #f9f9f9; /* Purple */
-        font-weight: 800;
-        font-size: 1.7rem;
-        margin: 0;
-        text-align: center;
-        flex: 2 !important;
-    }
-    .btn-app-home {
-        background: white;
-        color: #20c997 !important;
-        font-weight: bold;
-        border-radius: 15px;
-        padding: 5px 20px;
-        text-decoration: none;
-        text-align: center;
-    }
-    
+    .desktop-app-card { background: #ffffff; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); overflow: hidden; margin-top: 10px; border: none; }
+    .app-header-gradient { background: linear-gradient(to right, #2ecc71, #1abc9c); padding: 15px 25px; display: flex; align-items: center; justify-content: space-between; color: white; }
+    .app-title-center { font-weight: 850; font-size: 1.8rem; text-transform: uppercase; margin: 0; flex-grow: 1; text-align: center; letter-spacing: 1px; }
+    .btn-app-home { background: white; color: #1abc9c !important; font-weight: bold; border-radius: 15px; padding: 5px 20px; text-decoration: none; transition: 0.3s; width: 120px; text-align: center; }
     .form-section-app { padding: 30px; background: #fff; }
-    .underline-input {
-        border: none;
-        border-bottom: 2px solid #ddd;
-        border-radius: 0;
-        padding: 8px 0;
-        background: transparent;
-        transition: 0.3s;
-    }
-    .underline-input:focus {
-        box-shadow: none;
-        border-bottom-color: #6f42c1;
-    }
-    /* Error styling for invalid contact numbers */
-    .underline-input:invalid {
-        border-bottom-color: #dc3545 !important;
-        color: #dc3545 !important;
-    }
-    .underline-input:invalid::placeholder { color: #dc3545; opacity: 0.7; }
-
-    .app-title-purple.small-title {
-        font-size: 1.4rem;
-    }
-
-    .btn-save-green { background-color: #198754; color: white; border-radius: 20px; padding: 10px 30px; border: none; font-weight: 600; }
-    .btn-delete-pink { background-color: #ff8787; color: white; border-radius: 20px; padding: 10px 30px; border: none; font-weight: 600; }
-    .btn-new-blue { background-color: #0d47a1; color: white; border-radius: 20px; padding: 10px 30px; border: none; font-weight: 600; }
-
-    .app-table-container { padding: 0 30px 30px; }
-    .grid-table { border: 1px solid #eee; }
-    .grid-table th { background: #fdfbff; color: #888; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
-    .grid-table td { vertical-align: middle; }
+    .underline-input { border: none !important; border-bottom: 2px solid #eee !important; border-radius: 0 !important; padding: 12px 5px !important; background: transparent !important; transition: 0.3s; font-weight: 600; width: 100%; box-shadow: none !important; }
+    .underline-input:focus { outline: none; border-bottom-color: #1abc9c; }
+    .highlight-edit { border-bottom-color: #0d6efd !important; }
+    .stats-label { font-size: 0.85rem; color: #888; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 5px; }
+    .grid-table th { background: #fdfbff; color: #555; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; padding: 15px; }
+    .auto-hide { transition: opacity 0.5s ease; }
 </style>
 
-<div class="desktop-app-wrapper">
-    <!-- Top Header Bar -->
-    <div class="app-header-teal">
-        <div class="window-controls">
-            <div class="win-dot dot-r"></div>
-            <div class="win-dot dot-y"></div>
-            <div class="win-dot dot-g"></div>
+<div class="desktop-app-card">
+    <div class="app-header-gradient">
+        <div class="window-controls d-flex gap-2">
+            <span style="width:12px; height:12px; border-radius:50%; background:#ff5f56;"></span>
+            <span style="width:12px; height:12px; border-radius:50%; background:#ffbd2e;"></span>
+            <span style="width:12px; height:12px; border-radius:50%; background:#009a17;"></span>
         </div>
-        <h2 class="app-title-purple">MANAGE STUDENT</h2>
+        <h2 class="app-title-center">Manage Users & Students</h2>
         <a href="<?= BASE_URL ?>" class="btn-app-home shadow-sm">Home</a>
     </div>
 
-    <!-- Form Section -->
     <div class="form-section-app">
-        <?php if(isset($student_error)): ?><div class="alert alert-danger rounded-3 auto-hide"><?= $student_error ?></div><?php endif; ?>
-        <?php if(isset($_GET['std_msg'])): ?><div class="alert alert-success rounded-3 auto-hide"><?= htmlspecialchars($_GET['std_msg']) ?></div><?php endif; ?>
-        <?php if(isset($_GET['msg']) && $_GET['msg'] == 'deleted'): ?><div class="alert alert-info rounded-3 auto-hide">Record moved to trash.</div><?php endif; ?>
-        
-        <form method="post" id="appStudentForm">
+        <?php if(isset($error)): ?><div class="alert alert-danger rounded-3 auto-hide"><?= $error ?></div><?php endif; ?>
+        <?php if(isset($_GET['success_msg'])): ?><div class="alert alert-success rounded-3 auto-hide"><?= htmlspecialchars($_GET['success_msg']) ?></div><?php endif; ?>
+
+        <form method="post" id="userForm" class="mb-5">
             <input type="hidden" name="user_id" id="edit_user_id" value="0">
             <div class="row g-4">
-                <div class="col-md-4">
-                    <label class="text-muted small fw-bold">Student ID</label>
-                    <input type="text" name="student_id" class="form-control underline-input" placeholder="Enter Registration No" required>
+                <div class="col-md-3">
+                    <label class="stats-label">Full Name</label>
+                    <input type="text" name="name" id="u_name" class="form-control underline-input" placeholder="e.g. Ali Ahmed" required>
                 </div>
-                <div class="col-md-4">
-                    <label class="text-muted small fw-bold">Name</label>
-                    <input type="text" name="name" class="form-control underline-input" placeholder="Full Student Name" required>
+                <div class="col-md-3">
+                    <label class="stats-label">Email Address</label>
+                    <input type="email" name="email" id="u_email" class="form-control underline-input" placeholder="student@hostel.com" required>
                 </div>
-                <div class="col-md-4">
-                    <label class="text-muted small fw-bold">Address</label>
-                    <input type="text" name="address" class="form-control underline-input" placeholder="Permanent Home Address">
+                <div class="col-md-3">
+                    <label class="stats-label">Password</label>
+                    <input type="password" name="password" id="u_password" class="form-control underline-input" placeholder="••••••••">
+                    <small class="text-muted" id="passHint" style="display:none;">Leave blank to keep current</small>
                 </div>
-                <div class="col-md-4">
-                    <label class="text-muted small fw-bold">Contact</label>
-                    <input type="tel" name="contact" class="form-control underline-input" placeholder="Phone (e.g. 03001234567)" pattern="[0-9]{10,15}" required title="Numbers only, 10-15 digits">
-                </div>
-                <div class="col-md-4">
-                    <label class="text-muted small fw-bold">Date of Birth</label>
-                    <input type="date" name="dob" class="form-control underline-input">
-                </div>
-                <div class="col-md-4">
-                    <label class="text-muted small fw-bold">Gender</label>
-                    <select name="gender" class="form-select underline-input">
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Any">Other</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Buttons -->
-            <div class="mt-5 d-flex gap-3">
-                <button type="submit" name="save_student" id="mainSubmitBtn" class="btn-save-green shadow-sm">ACCEPT & SAVE</button>
-                <button type="button" class="btn-delete-pink shadow-sm" onclick="handleAppDelete()">DELETE</button>
-                <button type="reset" class="btn-new-blue shadow-sm">+ NEW STUDENT</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Table Section -->
-    <div class="app-table-container">
-        <div class="table-responsive rounded-3 shadow-sm" style="max-height: 400px; overflow-y: auto;">
-            <table class="table table-hover grid-table mb-0" id="studentAppTable">
-                <thead class="sticky-top">
-                    <tr>
-                        <th class="ps-3">Student ID</th>
-                        <th>Name</th>
-                        <th>Address</th>
-                        <th>Contact</th>
-                        <th>DOB</th>
-                        <th>Gender</th>
-                        <th class="text-center">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach($students as $s): ?>
-                    <tr onclick="fillAppForm('<?= $s['id'] ?>', '<?= $s['registration_no'] ?>', '<?= $s['name'] ?>', '<?= $s['address'] ?>', '<?= $s['phone'] ?>', '<?= $s['date_of_birth'] ?>', '<?= $s['gender'] ?>')" style="cursor:pointer;">
-                        <td class="ps-3 fw-bold"><?= htmlspecialchars($s['registration_no'] ?? 'N/A') ?></td>
-                        <td class="text-dark"><?= htmlspecialchars($s['name']) ?></td>
-                        <td class="small"><?= htmlspecialchars($s['address'] ?? '-') ?></td>
-                        <td><?= htmlspecialchars($s['phone'] ?? '-') ?></td>
-                        <td><?= $s['date_of_birth'] ? date('d M Y', strtotime($s['date_of_birth'])) : '-' ?></td>
-                        <td><span class="badge bg-light text-dark border"><?= $s['gender'] ?></span></td>
-                        <td class="text-center">
-                            <div class="btn-group">
-                                <button class="btn btn-sm btn-outline-primary border-0" title="Edit"><i class="bi bi-pencil-square"></i></button>
-                                <a href="?delete_user=<?= $s['id'] ?>" class="btn btn-sm btn-outline-danger border-0" onclick="return confirm('Delete Student?')" title="Delete"><i class="bi bi-trash3-fill"></i></a>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- Staff Management Section -->
-<div class="desktop-app-wrapper mt-5">
-    <!-- Top Header Bar for Staff -->
-    <div class="app-header-teal">
-        <div class="window-controls">
-            <div class="win-dot dot-r"></div>
-            <div class="win-dot dot-y"></div>
-            <div class="win-dot dot-g"></div>
-        </div>
-        <h2 class="app-title-purple small-title">MANAGE STAFF</h2>
-        <a href="<?= BASE_URL ?>" class="btn-app-home shadow-sm">Home</a>
-    </div>
-
-    <!-- Staff Form Section -->
-    <div class="form-section-app">
-        <?php if(isset($staff_error)): ?><div class="alert alert-danger rounded-3 auto-hide"><?= $staff_error ?></div><?php endif; ?>
-        <?php if(isset($_GET['stf_msg'])): ?><div class="alert alert-success rounded-3 auto-hide"><?= htmlspecialchars($_GET['stf_msg']) ?></div><?php endif; ?>
-        
-        <form method="post" id="appStaffForm">
-            <input type="hidden" name="staff_user_id" id="edit_staff_user_id" value="0">
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <label class="text-muted small fw-bold">Name</label>
-                    <input type="text" name="staff_name" class="form-control underline-input" placeholder="Full Staff Name" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="text-muted small fw-bold">Email</label>
-                    <input type="email" name="staff_email" class="form-control underline-input" placeholder="Staff Email" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="text-muted small fw-bold">Contact</label>
-                    <input type="tel" name="staff_contact" class="form-control underline-input" placeholder="Phone (e.g. 03001234567)" pattern="[0-9]{10,15}" required title="Numbers only, 10-15 digits">
-                </div>
-                <div class="col-md-4">
-                    <label class="text-muted small fw-bold">Role</label>
-                    <select name="staff_role" class="form-select underline-input" required>
-                        <?php foreach($roles as $r): 
-                            if ($r['role_key'] === 'student') continue; // Students are managed separately
-                        ?>
-                            <option value="<?= $r['role_key'] ?>"><?= htmlspecialchars($r['role_name']) ?></option>
+                <div class="col-md-3">
+                    <label class="stats-label">Assign Role</label>
+                    <select name="role" id="u_role" class="form-select underline-input" required>
+                        <?php foreach($roles as $r): ?>
+                            <option value="<?= $r['role_key'] ?>"><?= $r['role_name'] ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-            </div>
-
-            <!-- Buttons -->
-            <div class="mt-5 d-flex gap-3">
-                <button type="submit" name="save_staff" id="mainStaffSubmitBtn" class="btn-save-green shadow-sm">ACCEPT & SAVE STAFF</button>
-                <button type="button" class="btn-delete-pink shadow-sm" onclick="handleStaffDelete()">DELETE STAFF</button>
-                <button type="reset" class="btn-new-blue shadow-sm">+ NEW STAFF</button>
+                <div class="col-md-3">
+                    <label class="stats-label">Registration No</label>
+                    <input type="text" name="registration_no" id="u_reg" class="form-control underline-input" placeholder="ST-2024-xxx">
+                </div>
+                <div class="col-md-3">
+                    <label class="stats-label">Identity (CNIC)</label>
+                    <input type="text" name="identity_no" id="u_idno" class="form-control underline-input" placeholder="35202-xxxxxxx-x">
+                </div>
+                <div class="col-md-3">
+                    <label class="stats-label">Account Status</label>
+                    <select name="is_active" id="u_status" class="form-select underline-input">
+                        <option value="1">Active / Verified</option>
+                        <option value="0">Pending / Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-3 pt-3">
+                    <button type="submit" name="save_user" id="submitBtn" class="btn btn-success rounded-pill px-4 w-100 shadow-sm">SAVE ACCOUNT</button>
+                    <button type="submit" name="save_user" id="updateBtn" class="btn btn-primary rounded-pill px-4 w-100 shadow-sm" style="display:none;">UPDATE USER</button>
+                    <div class="text-center mt-2" id="cancelContainer" style="display:none;"><a href="javascript:void(0)" onclick="resetUserForm()" class="text-muted small">Cancel Edit</a></div>
+                </div>
             </div>
         </form>
-    </div>
 
-    <!-- Staff Table Section -->
-    <div class="app-table-container">
-        <div class="table-responsive rounded-3 shadow-sm" style="max-height: 400px; overflow-y: auto;">
-            <table class="table table-hover grid-table mb-0" id="staffAppTable">
-                <thead class="sticky-top">
+        <div class="table-responsive rounded-3 shadow-sm border">
+            <table class="table grid-table mb-0">
+                <thead>
                     <tr>
-                        <th class="ps-3">Name</th>
-                        <th>Email</th>
-                        <th>Contact</th>
-                        <th>Role</th>
+                        <th>User Name</th>
+                        <th>Email & Role</th>
+                        <th>Reg / ID</th>
+                        <th>Status</th>
                         <th class="text-center">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach($staff_members as $staff): ?>
-                    <tr onclick="fillStaffForm('<?= $staff['id'] ?>', '<?= $staff['name'] ?>', '<?= $staff['email'] ?>', '<?= $staff['phone'] ?>', '<?= $staff['role_name'] ?>')" style="cursor:pointer;">
-                        <td class="ps-3 fw-bold"><?= htmlspecialchars($staff['name']) ?></td>
-                        <td class="text-dark"><?= htmlspecialchars($staff['email']) ?></td>
-                        <td class="small"><?= htmlspecialchars($staff['phone'] ?? '-') ?></td>
-                        <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($staff['role_name']) ?></span></td>
+                    <?php foreach($users as $u): ?>
+                    <tr onclick='editUser(<?= htmlspecialchars(json_encode($u), ENT_QUOTES) ?>)' style="cursor:pointer;" title="Click to edit">
+                        <td><div class="fw-bold text-dark"><?= htmlspecialchars($u['name']) ?></div><small class="text-muted">Member since <?= date('M Y', strtotime($u['created_at'])) ?></small></td>
+                        <td><div class="text-primary fw-bold"><?= htmlspecialchars($u['email']) ?></div><span class="badge <?= getRoleBadgeColor($u['role']) ?>"><?= strtoupper($u['role']) ?></span></td>
+                        <td><div>Reg: <?= htmlspecialchars($u['registration_no'] ?? 'N/A') ?></div><div class="small text-muted">ID: <?= htmlspecialchars($u['identity_no'] ?? 'N/A') ?></div></td>
+                        <td><?= $u['is_active'] ? '<span class="text-success"><i class="bi bi-patch-check-fill"></i> Active</span>' : '<span class="text-muted">Inactive</span>' ?></td>
                         <td class="text-center">
-                            <div class="btn-group">
-                                <button class="btn btn-sm btn-outline-primary border-0" title="Edit"><i class="bi bi-pencil-square"></i></button>
-                                <a href="?delete_user=<?= $staff['id'] ?>" class="btn btn-sm btn-outline-danger border-0" onclick="return confirm('Delete Staff Member?')" title="Delete"><i class="bi bi-trash3-fill"></i></a>
-                            </div>
+                            <button class="btn btn-sm text-primary border-0" title="Edit"><i class="bi bi-pencil-square"></i></button>
+                            <a href="?delete=<?= $u['id'] ?>" class="btn btn-sm text-danger border-0" onclick="return confirm('Delete this account?')"><i class="bi bi-trash3-fill"></i></a>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -404,69 +171,46 @@ $staff_members = $pdo->query("
 </div>
 
 <script>
-    // Auto-hide alerts after 5 seconds to keep UI clean
+    function editUser(u) {
+        // Populate hidden ID
+        document.getElementById('edit_user_id').value = u.id;
+        
+        // Populate text fields
+        document.getElementById('u_name').value = u.name;
+        document.getElementById('u_email').value = u.email;
+        document.getElementById('u_reg').value = u.registration_no || "";
+        document.getElementById('u_idno').value = u.identity_no || "";
+        
+        // Populate select dropdowns
+        document.getElementById('u_role').value = u.role;
+        document.getElementById('u_status').value = u.is_active;
+        
+        // UI Changes
+        document.getElementById('u_password').placeholder = "Leave blank to keep same";
+        document.getElementById('passHint').style.display = "block";
+        document.getElementById('submitBtn').style.display = "none";
+        document.getElementById('updateBtn').style.display = "inline-block";
+        document.getElementById('cancelContainer').style.display = "block";
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetUserForm() {
+        document.getElementById('userForm').reset();
+        document.getElementById('edit_user_id').value = "0";
+        document.getElementById('u_password').placeholder = "••••••••";
+        document.getElementById('passHint').style.display = "none";
+        document.getElementById('submitBtn').style.display = "inline-block";
+        document.getElementById('updateBtn').style.display = "none";
+        document.getElementById('cancelContainer').style.display = "none";
+    }
+
     setTimeout(() => {
         document.querySelectorAll('.auto-hide').forEach(el => {
-            el.style.display = 'none';
+            el.style.opacity = '0';
+            setTimeout(() => el.style.display = 'none', 500);
         });
     }, 5000);
-
-    // Desktop Clock
-    function updateAppClock() {
-        const now = new Date();
-        document.getElementById('app-clock').innerText = now.toLocaleString('en-US', { 
-            weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-        });
-    }
-    setInterval(updateAppClock, 1000);
-    updateAppClock();
-
-    // Row Click Fill Logic
-    function fillAppForm(uid, reg, name, addr, contact, dob, gender) {
-        const form = document.getElementById('appStudentForm');
-        document.getElementById('edit_user_id').value = uid;
-        form.student_id.value = reg;
-        form.name.value = name;
-        form.address.value = addr;
-        form.contact.value = contact;
-        form.dob.value = dob;
-        form.gender.value = gender;
-        document.getElementById('mainSubmitBtn').innerText = "UPDATE STUDENT";
-    }
-
-    // Staff Row Click Fill Logic
-    function fillStaffForm(uid, name, email, contact, role) {
-        const form = document.getElementById('appStaffForm');
-        document.getElementById('edit_staff_user_id').value = uid;
-        form.staff_name.value = name;
-        form.staff_email.value = email;
-        form.staff_contact.value = contact;
-        // Find the option by text content if role_name is used for display
-        Array.from(form.staff_role.options).forEach(option => {
-            if (option.text === role) {
-                option.selected = true;
-            }
-        });
-        document.getElementById('mainStaffSubmitBtn').innerText = "UPDATE STAFF";
-    }
-
-    // Reset Staff Form
-    document.querySelector('#appStaffForm button[type="reset"]').addEventListener('click', function() {
-        document.getElementById('edit_staff_user_id').value = "0";
-        document.getElementById('mainStaffSubmitBtn').innerText = "ACCEPT & SAVE STAFF";
-    });
-
-    document.querySelector('button[type="reset"]').addEventListener('click', function() {
-        document.getElementById('edit_user_id').value = "0";
-        document.getElementById('mainSubmitBtn').innerText = "ACCEPT & SAVE";
-    });
-
-    function handleAppDelete() {
-        alert('Please use the trash icon in the table list to delete a specific student record.');
-    }
-
-    function handleStaffDelete() {
-        alert('Please use the trash icon in the table list to delete a specific staff record.');
-    }
 </script>
+
 <?php require_once '../../includes/footer.php'; ?>

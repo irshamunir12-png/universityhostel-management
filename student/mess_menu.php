@@ -2,6 +2,25 @@
 require_once '../includes/header.php';
 require_once '../core/session.php';
 
+// --- DATABASE REPAIR: Ensure required tables exist ---
+$pdo->exec("CREATE TABLE IF NOT EXISTS `mess_special_items` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `title` varchar(255) NOT NULL,
+    `description` text DEFAULT NULL,
+    `price` decimal(10,2) NOT NULL DEFAULT 0.00,
+    `available_date` date DEFAULT NULL,
+    `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+$pdo->exec("CREATE TABLE IF NOT EXISTS `mess_special_orders` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `user_id` int(11) NOT NULL,
+    `item_id` int(11) NOT NULL,
+    `ordered_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
 $user_id = $_SESSION['user_id'];
 
 // Handle Order

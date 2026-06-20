@@ -1,6 +1,7 @@
 <?php
-require_once '../../includes/header.php';
+require_once 'core/session.php';
 require_once '../../core/functions.php';
+
 
 // Handle Asset Return (Deallocation)
 if (isset($_GET['return_asset'])) {
@@ -94,6 +95,8 @@ $allocations = $pdo->query("
     ORDER BY aa.created_at DESC
 ")->fetchAll();
 
+require_once '../../includes/header.php';
+
 ?>
 
 <div class="row">
@@ -101,6 +104,13 @@ $allocations = $pdo->query("
     <div class="col-md-4">
         <div class="card card-primary card-outline">
             <div class="card-header"><h3 class="card-title"><i class="bi bi-person-bounding-box"></i> Allocate New Asset</h3></div>
+            <div class="card-body">
+                <!-- Navigation Tabs -->
+                <ul class="nav nav-tabs mb-4">
+                    <li class="nav-item"><a class="nav-link" href="manage_inventory.php"><i class="bi bi-boxes"></i> General Stock</a></li>
+                    <li class="nav-item"><a class="nav-link" href="manage_assets.php"><i class="bi bi-upc-scan"></i> Trackable Assets</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="allocate_assets.php"><i class="bi bi-person-check"></i> Asset Allocation</a></li>
+                </ul>
             <div class="card-body">
                 <?php if(isset($error)): ?><div class="alert alert-danger"><?= $error ?></div><?php endif; ?>
                 <?php if(isset($success)): ?><div class="alert alert-success"><?= $success ?></div><?php endif; ?>

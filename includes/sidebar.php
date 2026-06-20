@@ -44,23 +44,15 @@ function isTreeOpen($children) {
 <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
     <div class="sidebar-brand">
         <a href="<?= BASE_URL ?>" class="brand-link text-decoration-none">
+            <i class="bi bi-house-door-fill me-2 text-primary"></i>
             <span class="brand-text fw-bold fs-4 text-white">
-                <i class="bi bi-house-door-fill me-2"></i> University <span class="fw-light text-light">Hostel MNG</span>
+                University <span class="fw-light text-light">Hostel</span>
             </span>
         </a>
     </div>
     <div class="sidebar-wrapper">
         <nav class="mt-2">
-            <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
-                
-                <!-- Sidebar Collapse Toggle (Desktop only) -->
-                <li class="nav-item d-none d-lg-block border-bottom mb-3 pb-2">
-                    <a href="#" class="nav-link" data-lte-toggle="sidebar">
-                        <i class="nav-icon bi bi-list"></i>
-                        <p>Minimize Menu</p>
-                    </a>
-                </li>
-                
+            <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">                
                 <?php foreach ($menu as $item): ?>
                     <?php if (empty($item['children'])): ?>
                         <!-- Single Item (Like Dashboard) -->

@@ -1,7 +1,7 @@
 <?php
 require_once 'db.php';
 
-// Usage: open http://localhost/universal/core/run_migrations.php?run=rooms
+// Usage: open http://localhost/residential-hostel/core/run_migrations.php?run=rooms
 $run = $_GET['run'] ?? '';
 if (!in_array($run, ['rooms', 'courses', 'complaints', 'pages', 'announcements'])) {
     echo "No valid migration specified. Use ?run=rooms, ?run=courses, ?run=complaints, ?run=pages or ?run=announcements";

@@ -121,6 +121,7 @@ require_once '../../includes/header.php';
                     <input type="date" class="form-control underline-input p-0" style="font-size: 0.9rem;" value="<?= $date ?>" onchange="window.location.href='?date='+this.value">
                 </div>
                 <div class="col-md-2">
+                    <a href="attendance_history.php" class="btn btn-sm btn-outline-primary rounded-pill w-100 mb-2 fw-bold" style="border-width: 2px;"><i class="bi bi-clock-history"></i> VIEW LOGS</a>
                     <button type="button" class="btn btn-outline-success btn-sm fw-bold rounded-pill w-100" onclick="markAll('Present')">MARK ALL PRESENT</button>
                 </div>
             </div>

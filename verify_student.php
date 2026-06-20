@@ -8,7 +8,7 @@ if (isset($_GET['reg_no'])) {
     $reg_no = sanitize($_GET['reg_no']);
     
     $stmt = $pdo->prepare("
-        SELECT u.name, u.registration_no, u.email, u.is_active, u.avatar, r.room_no, r.building 
+        SELECT u.name, u.registration_no, u.email, u.is_active, u.avatar, u.guardian_name, u.emergency_contact, r.room_no, r.building 
         FROM users u 
         LEFT JOIN room_allocations ra ON u.id = ra.user_id AND ra.is_active = 1 
         LEFT JOIN rooms r ON ra.room_id = r.id 
@@ -47,6 +47,8 @@ if (isset($_GET['reg_no'])) {
                     
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between align-items-center">Registration No: <strong><?= htmlspecialchars($student['registration_no']) ?></strong></li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">Guardian: <strong><?= htmlspecialchars($student['guardian_name'] ?? 'N/A') ?></strong></li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">Emergency No: <strong><?= htmlspecialchars($student['emergency_contact'] ?? 'N/A') ?></strong></li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">Room: <strong><?= $student['room_no'] ? htmlspecialchars($student['building'] . ' - ' . $student['room_no']) : 'Not Allocated' ?></strong></li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">Status: <?php if ($student['is_active']): ?><span class="badge bg-success"><i class="bi bi-check-circle"></i> Active</span><?php else: ?><span class="badge bg-danger"><i class="bi bi-x-circle"></i> Inactive</span><?php endif; ?></li>
                     </ul>
@@ -56,7 +58,7 @@ if (isset($_GET['reg_no'])) {
                 <?php endif; ?>
             </div>
             <div class="card-footer text-center text-muted small">
-                Powered by Universal Hostel System
+                Powered by Residential Hostel System
             </div>
         </div>
     </div>

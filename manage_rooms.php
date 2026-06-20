@@ -1,5 +1,5 @@
 <?php
-require_once '../../includes/header.php';
+require_once '../../core/session.php';
 require_once '../../core/functions.php';
 
 // Handle Add Room
@@ -26,12 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_room'])) {
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
     $pdo->prepare("DELETE FROM rooms WHERE id = ?")->execute([$id]);
-    echo "<script>window.location.href='manage_rooms.php';</script>";
+    header("Location: manage_rooms.php?msg=deleted");
     exit;
 }
 
 // Fetch Rooms
 $rooms = $pdo->query("SELECT * FROM rooms ORDER BY building ASC, room_no ASC")->fetchAll();
+
+require_once '../../includes/header.php';
 ?>
 
 <div class="card card-primary card-outline">

@@ -2,6 +2,63 @@
 require_once '../../includes/header.php';
 require_once '../../core/functions.php';
 
+// --- DATABASE REPAIR: Ensure mess_items table exists ---
+$pdo->exec("CREATE TABLE IF NOT EXISTS mess_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    item_name VARCHAR(100) NOT NULL UNIQUE,
+    category VARCHAR(50) DEFAULT 'General',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+// Insert some default mess items if table was just created or is empty
+$pdo->exec("INSERT IGNORE INTO mess_items (item_name, category) VALUES
+('Tea', 'Breakfast'),
+('Coffee', 'Breakfast'),
+('Paratha', 'Breakfast'),
+('Omelette', 'Breakfast'),
+('Bread', 'Breakfast'),
+('Chicken Karahi', 'Dinner'),
+('Daal Chawal', 'Lunch'),
+('Vegetable Curry', 'Lunch'),
+('Roti', 'General'),
+('Salad', 'General'),
+('Water', 'General');
+");
+
+// --- DATABASE REPAIR: Ensure mess_special_items table exists ---
+$pdo->exec("CREATE TABLE IF NOT EXISTS `mess_special_items` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `title` varchar(255) NOT NULL,
+    `description` text DEFAULT NULL,
+    `price` decimal(10,2) NOT NULL DEFAULT 0.00,
+    `available_date` date DEFAULT NULL,
+    `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+// --- DATABASE REPAIR: Ensure mess_special_orders table exists ---
+$pdo->exec("CREATE TABLE IF NOT EXISTS `mess_special_orders` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `user_id` int(11) NOT NULL,
+    `item_id` int(11) NOT NULL,
+    `ordered_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+// --- DATABASE REPAIR: Ensure mess_menu table exists and has 7 days initialized ---
+$pdo->exec("CREATE TABLE IF NOT EXISTS mess_menu (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    day_of_week VARCHAR(20) NOT NULL UNIQUE,
+    breakfast TEXT,
+    lunch TEXT,
+    dinner TEXT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+$weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+foreach ($weekDays as $day) {
+    $pdo->prepare("INSERT IGNORE INTO mess_menu (day_of_week, breakfast, lunch, dinner) VALUES (?, '[]', '[]', '[]')")->execute([$day]);
+}
+
 // Add Tagify CSS for this page
 echo '<link href="https://unpkg.com/@yaireo/tagify/dist/tagify.css" rel="stylesheet" type="text/css" />';
 
@@ -39,7 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_menu'])) {
 
 // Fetch Existing Menu from Database
 $menuRows = $pdo->query("SELECT * FROM mess_menu")->fetchAll(PDO::FETCH_ASSOC);
-$weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 // Fetch food items for whitelist
 $foodItems = $pdo->query("SELECT item_name as value FROM mess_items ORDER BY value ASC")->fetchAll(PDO::FETCH_ASSOC);

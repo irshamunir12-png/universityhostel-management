@@ -5,15 +5,26 @@ $auth = new Auth($pdo);
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // ... rest of your login logic
     $identifier = trim($_POST['identifier']);
     $password = $_POST['password'];
 
     if ($auth->login($identifier, $password)) {
+        // Store registration_no in session for QR ID and Verification features
+        $stmt = $pdo->prepare("SELECT registration_no FROM users WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $_SESSION['registration_no'] = $stmt->fetchColumn();
+
         header("Location: index.php");
         exit;
     } else {
-        $error = "Invalid Credentials or Account Suspended.";
+        // Debugging ke liye check karein ke masla kahan hai
+        $checkUser = $pdo->prepare("SELECT id, is_active FROM users WHERE email = ? OR registration_no = ?");
+        $checkUser->execute([$identifier, $identifier]);
+        $found = $checkUser->fetch();
+        
+        if (!$found) { $error = "User not found with this ID ($identifier)."; }
+        else if ($found['is_active'] == 0) { $error = "Account is Suspended."; }
+        else { $error = "Incorrect Password. Please try 'admin123'."; }
     }
 }
 ?>
@@ -22,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login | Universal System</title>
+    <title>Login | University Hostel</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-beta2/dist/css/adminlte.min.css" />
@@ -66,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="col-md-5 p-4 p-lg-5 bg-white border-md-end" style="border-right: 1px solid #dee2e6;">
                     <div class="text-center mb-4">
                         <a href="#" class="link-dark text-decoration-none">
-                            <h1 class="mb-0"><b>Universal</b>ERP</h1>
+                            <h1 class="mb-0"><b>University</b> Hostel</h1>
                         </a>
                         <p class="login-box-msg">Sign in to start your session</p>
                     </div>

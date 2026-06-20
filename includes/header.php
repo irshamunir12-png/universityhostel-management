@@ -9,7 +9,7 @@ while ($row = $stmt->fetch()) {
 }
 
 // 2. Identify Current Page & Security Check
-$current_url = substr($_SERVER['SCRIPT_NAME'], strlen('/universal/')); // Adjust offset
+$current_url = substr($_SERVER['SCRIPT_NAME'], strlen('/Universityhostel/')); 
 // Clean URL for DB matching (assuming DB stores relative paths)
 $db_url_match = $current_url; 
 // If your script is in a folder, the DB url should match "dashboards/super_admin/file.php"
@@ -168,6 +168,13 @@ if (isset($_SESSION['user_id'])) {
         .app-brand-logo { height: 30px; width: auto; }
         .user-image { width: 30px; height: 30px; object-fit: cover; }
 
+        /* A-Level Smart Suggestions Styles */
+        .ai-suggest-box { position: absolute; z-index: 9999; background: white; border-radius: 12px; border: 1px solid #ddd; width: 100%; max-height: 250px; overflow-y: auto; display: none; margin-top: 5px; box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important; }
+        .ai-suggest-item { padding: 12px 15px; cursor: pointer; transition: 0.2s; border-bottom: 1px solid #f1f1f1; font-size: 0.95rem; color: #333; display: flex; align-items: center; }
+        .ai-suggest-item:hover { background: #e8f5e9; color: #1b5e20; padding-left: 25px; }
+        .ai-suggest-item i { color: #198754; margin-right: 10px; font-size: 0.8rem; }
+        .ai-suggest-item strong { color: #198754; }
+        
         @media (min-width: 992px) {
             .sidebar-mini.sidebar-collapse .app-sidebar:hover { width: 250px !important; transition: width 0.3s ease; }
             .sidebar-mini.sidebar-collapse .app-sidebar:hover .brand-text,
@@ -175,19 +182,10 @@ if (isset($_SESSION['user_id'])) {
         }
     </style>
 </head>
-<body class="layout-fixed sidebar-expand-lg bg-body-tertiary sidebar-mini sidebar-collapse">
+<body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
 <div class="app-wrapper">
     <nav class="app-header navbar navbar-expand shadow">
         <div class="container-fluid">
-            <!-- Left: Sidebar Toggle -->
-            <ul class="navbar-nav">
-                <li class="nav-item"> 
-                    <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button">
-                        <i class="bi bi-list fs-4"></i>
-                    </a> 
-                </li>
-            </ul>
-
             <!-- Center: Dashboard Title -->
             <div class="mx-auto">
                 <span class="dashboard-title">Dashboard</span>
@@ -218,6 +216,98 @@ if (isset($_SESSION['user_id'])) {
         }
         setInterval(updateClock, 1000);
         updateClock();
+
+        /**
+         * Professional Typewriter Effect for AI Responses
+         * Isay use karne ke liye: typeWriterEffect(targetElement, fullText);
+         */
+        window.typeWriterEffect = function(element, text, speed = 15) {
+            let i = 0;
+            element.innerHTML = ""; // Container clear karein
+            
+            function type() {
+                if (i < text.length) {
+                    if (text.charAt(i) === "\n") {
+                        element.innerHTML += "<br>";
+                    } else {
+                        element.innerHTML += text.charAt(i);
+                    }
+                    i++;
+                    // Agar container scrollable hai toh auto-scroll down karein
+                    element.scrollTop = element.scrollHeight;
+                    setTimeout(type, speed);
+                }
+            }
+            type();
+        }
+
+        // Global Auto-Init for AI Suggestions
+        document.addEventListener('DOMContentLoaded', function() {
+            // Looks for any input with ID 'aiPrompt' or class 'ai-suggestion-input'
+            const target = document.getElementById('aiPrompt') || document.querySelector('.ai-suggestion-input');
+            if(target) { initSmartAISuggestions(target.id); }
+        });
+
+        /**
+         * Smart AI Suggestion Logic
+         * Isay use karne ke liye: initSmartAISuggestions('input_id');
+         */
+        window.initSmartAISuggestions = function(inputId) {
+            const input = document.getElementById(inputId);
+            if(!input) return;
+
+            // Pre-defined Hostel Phrases (A-Level)
+            const phrases = [
+                "Write a formal notice for 2 hours electricity maintenance on Sunday",
+                "Generate a formal warning for students making noise late at night",
+                "Draft an email to students regarding pending mess charges",
+                "Write a notice about room inspection scheduled for tomorrow",
+                "Create a formal application for a student requesting room change",
+                "Write an announcement for the upcoming hostel sports week",
+                "Generate a warning for keeping unauthorized guests in rooms",
+                "Write a notice for mess closing timings",
+                "Draft a professional apology letter for missing attendance",
+                "Write an invitation for the hostel annual dinner party",
+                "Create a maintenance request for water leakage in bathroom",
+                "Generate a security alert about keeping doors locked"
+            ];
+
+            // Create suggestion container
+            const suggestBox = document.createElement('div');
+            suggestBox.className = 'ai-suggest-box shadow-lg';
+            input.parentNode.style.position = 'relative';
+            input.parentNode.appendChild(suggestBox);
+
+            // Event: Show when typing
+            const handleInput = function() {
+                const val = this.value.toLowerCase();
+                suggestBox.innerHTML = "";
+                if(!val) { suggestBox.style.display = 'none'; return; }
+
+                const matches = phrases.filter(p => p.toLowerCase().includes(val));
+                if(matches.length > 0) {
+                    matches.forEach(match => {
+                        const item = document.createElement('div');
+                        item.className = 'ai-suggest-item';
+                        const highlighted = match.replace(new RegExp(val, 'gi'), (m) => `<strong>${m}</strong>`);
+                        item.innerHTML = `<i class="bi bi-stars"></i> <span>${highlighted}</span>`;
+                        item.onclick = () => { 
+                            input.value = match; 
+                            suggestBox.style.display = 'none';
+                            input.focus();
+                        };
+                        suggestBox.appendChild(item);
+                    });
+                    suggestBox.style.display = 'block';
+                } else { suggestBox.style.display = 'none'; }
+            };
+
+            input.addEventListener('input', handleInput);
+            input.addEventListener('focus', handleInput);
+
+            // Hide when clicking outside
+            document.addEventListener('click', (e) => { if(e.target !== input) suggestBox.style.display = 'none'; });
+        }
     </script>
 
     <?php include 'sidebar.php'; ?>

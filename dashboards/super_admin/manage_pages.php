@@ -78,7 +78,7 @@ $parents = $pdo->query("SELECT id, page_name FROM sys_pages WHERE parent_id = 0"
                         <td class="small text-muted"><?= $p['page_url'] ?></td>
                         <td><i class="<?= $p['icon_class'] ?>"></i></td>
                         <td>
-                            <button class="btn btn-sm text-primary border-0" onclick="editPage('<?= $p['id'] ?>', '<?= $p['page_name'] ?>', '<?= $p['page_url'] ?>', '<?= $p['icon_class'] ?>', '<?= $p['parent_id'] ?>', '<?= $p['sort_order'] ?>')"><i class="bi bi-pencil-square"></i></button>
+                            <button class="btn btn-sm text-primary border-0" onclick='editPage(<?= htmlspecialchars(json_encode($p), ENT_QUOTES) ?>)'><i class="bi bi-pencil-square"></i></button>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -89,13 +89,13 @@ $parents = $pdo->query("SELECT id, page_name FROM sys_pages WHERE parent_id = 0"
 </div>
 
 <script>
-    function editPage(id, name, url, icon, parent, sort) {
-        document.getElementById('pid').value = id;
-        document.getElementById('page_name').value = name;
-        document.getElementById('page_url').value = url;
-        document.getElementById('icon_class').value = icon;
-        document.getElementById('parent_id').value = parent;
-        document.getElementById('sort_order').value = sort;
+    function editPage(p) {
+        document.getElementById('pid').value = p.id;
+        document.getElementById('page_name').value = p.page_name;
+        document.getElementById('page_url').value = p.page_url;
+        document.getElementById('icon_class').value = p.icon_class;
+        document.getElementById('parent_id').value = p.parent_id;
+        document.getElementById('sort_order').value = p.sort_order;
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 </script>

@@ -7,11 +7,11 @@ $stmt = $pdo->prepare(
     "SELECT a.*, u.name as author_name
      FROM announcements a 
      LEFT JOIN users u ON a.user_id = u.id 
-     WHERE (a.expires_at IS NULL OR a.expires_at >= CURDATE())
-     AND (a.target_user_id IS NULL OR a.target_user_id = ?) AND a.is_deleted = 0
+     WHERE (a.expiry_date IS NULL OR a.expiry_date >= CURDATE())
+     AND a.is_deleted = 0
      ORDER BY a.is_pinned DESC, a.created_at DESC"
 );
-$stmt->execute([$_SESSION['user_id']]);
+$stmt->execute();
 $announcements = $stmt->fetchAll();
 ?>
 

@@ -11,8 +11,8 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS system_settings (
 
 // 2. Initialize Default Settings if missing
 $defaults = [
-    'system_name' => 'Universal Hostel System',
-    'footer_text' => 'Copyright © ' . date('Y') . ' Universal Hostels. All rights reserved.',
+    'system_name' => 'University Hostel',
+    'footer_text' => 'Copyright © ' . date('Y') . ' University Hostel. All rights reserved.',
     'curfew_time' => '22:00:00',
     'currency_symbol' => 'PKR'
 ];
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_settings'])) {
                 <form method="post">
                     <div class="mb-4">
                         <label class="form-label fw-bold">System Name (Website Title)</label>
-                        <input type="text" name="system_name" class="form-control" value="<?= htmlspecialchars($settings['system_name'] ?? 'Universal Hostel') ?>" required>
+                        <input type="text" name="system_name" class="form-control" value="<?= htmlspecialchars($settings['system_name'] ?? 'University Hostel') ?>" required>
                         <div class="form-text">This name appears in the browser tab and top navigation.</div>
                     </div>
 

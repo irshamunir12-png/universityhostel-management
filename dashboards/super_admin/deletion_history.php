@@ -1,6 +1,13 @@
 <?php
 require_once '../../includes/header.php';
 
+// Auto-Fix: Ensure 'deleted_at' column exists in announcements table for this page to work
+try {
+    $pdo->query("SELECT deleted_at FROM announcements LIMIT 1");
+} catch (Exception $e) {
+    $pdo->exec("ALTER TABLE announcements ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL AFTER is_deleted");
+}
+
 // Handle Restore
 if (isset($_GET['restore_id']) && isset($_GET['type'])) {
     $id = (int)$_GET['restore_id'];
@@ -8,8 +15,8 @@ if (isset($_GET['restore_id']) && isset($_GET['type'])) {
     $table = '';
     if ($type === 'room') $table = 'rooms';
     if ($type === 'announcement') $table = 'announcements';
-    if ($type === 'department') $table = 'departments';
     if ($type === 'user') $table = 'users';
+    if ($type === 'course') $table = 'courses';
 
     if ($table) {
         $pdo->prepare("UPDATE $table SET is_deleted = 0, deleted_at = NULL WHERE id = ?")->execute([$id]);
@@ -25,8 +32,8 @@ if (isset($_GET['perm_delete_id']) && isset($_GET['type'])) {
     $table = '';
     if ($type === 'room') $table = 'rooms';
     if ($type === 'announcement') $table = 'announcements';
-    if ($type === 'department') $table = 'departments';
     if ($type === 'user') $table = 'users';
+    if ($type === 'course') $table = 'courses';
 
     if ($table) {
         $pdo->prepare("DELETE FROM $table WHERE id = ?")->execute([$id]);
@@ -40,8 +47,8 @@ if (isset($_POST['empty_trash'])) {
     // Delete all soft-deleted records permanently
     $pdo->exec("DELETE FROM rooms WHERE is_deleted = 1");
     $pdo->exec("DELETE FROM announcements WHERE is_deleted = 1");
-    $pdo->exec("DELETE FROM departments WHERE is_deleted = 1");
     $pdo->exec("DELETE FROM users WHERE is_deleted = 1");
+    $pdo->exec("DELETE FROM courses WHERE is_deleted = 1");
     
     echo "<script>window.location.href='deletion_history.php?msg=trash_emptied';</script>";
     exit;
@@ -55,13 +62,13 @@ try {
         UNION ALL
         (SELECT id, 'Announcement' as item_type, title as item_name, deleted_at, 'announcement' as type_key FROM announcements WHERE is_deleted = 1)
         UNION ALL
-        (SELECT id, 'Department' as item_type, department_name as item_name, deleted_at, 'department' as type_key FROM departments WHERE is_deleted = 1)
+        (SELECT id, 'Course' as item_type, CONCAT(course_code, ' - ', course_name) as item_name, deleted_at, 'course' as type_key FROM courses WHERE is_deleted = 1)
         UNION ALL
         (SELECT id, 'User' as item_type, CONCAT(name, ' (', email, ')') as item_name, deleted_at, 'user' as type_key FROM users WHERE is_deleted = 1)
         ORDER BY deleted_at DESC
     ")->fetchAll();
 } catch (Exception $e) {
-    $dbError = "Database Error: Please ensure all tables (users, rooms, announcements, departments) have 'is_deleted' column. <br>Details: " . $e->getMessage();
+    $dbError = "Database Error: Please ensure all tables (users, rooms, announcements) have 'is_deleted' column. <br>Details: " . $e->getMessage();
 }
 
 ?>

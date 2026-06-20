@@ -1,5 +1,5 @@
 <?php
-require_once '../../includes/header.php';
+require_once '../../core/session.php';
 require_once '../../core/functions.php';
 
 // 1. Table Creation (Agar table na bani ho)
@@ -28,6 +28,13 @@ try {
     }
 }
 
+// Ensure deleted_at exists for Trash feature
+try {
+    $pdo->query("SELECT deleted_at FROM announcements LIMIT 1");
+} catch (Exception $e) {
+    $pdo->exec("ALTER TABLE announcements ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL AFTER is_deleted");
+}
+
 // 2. Handle Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_announcement'])) {
     $id = (int)$_POST['ann_id'];
@@ -50,13 +57,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_announcement']))
 }
 
 if (isset($_GET['delete'])) {
-    $pdo->prepare("UPDATE announcements SET is_deleted = 1 WHERE id = ?")->execute([(int)$_GET['delete']]);
+    $pdo->prepare("UPDATE announcements SET is_deleted = 1, deleted_at = NOW() WHERE id = ?")->execute([(int)$_GET['delete']]);
     header("Location: manage_announcements.php?success_msg=Deleted successfully");
     exit;
 }
 
 // 3. Fetch Data
 $announcements = $pdo->query("SELECT * FROM announcements WHERE is_deleted = 0 ORDER BY created_at DESC")->fetchAll();
+
+require_once '../../includes/header.php';
 ?>
 
 <style>
@@ -132,7 +141,12 @@ $announcements = $pdo->query("SELECT * FROM announcements WHERE is_deleted = 0 O
                     </span>
                 </div>
                 <div class="col-md-12">
-                    <label class="label-min">Description / Content</label>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="label-min mb-0">Description / Content</label>
+                        <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2 fw-bold" style="font-size: 0.65rem;" data-bs-toggle="modal" data-bs-target="#globalAIModal">
+                            <i class="bi bi-stars"></i> USE AI WRITER
+                        </button>
+                    </div>
                     <textarea name="content" id="ann_content" class="underline-input" rows="3" placeholder="Write the details here..." required></textarea>
                 </div>
                 <div class="col-md-12 text-center mt-4">

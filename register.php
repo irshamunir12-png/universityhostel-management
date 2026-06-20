@@ -14,7 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'password' => $_POST['password'],
         'role' => $_POST['role'],
         'identity_no' => trim($_POST['identity_no']),
-        'registration_no' => trim($_POST['registration_no'])
+        'registration_no' => trim($_POST['registration_no']),
+        'guardian_name' => trim($_POST['guardian_name']),
+        'emergency_contact' => trim($_POST['emergency_contact'])
     ];
 
     // Basic Backend Validation
@@ -38,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Register | Universal System</title>
+    <title>Register | University Hostel</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-beta2/dist/css/adminlte.min.css" />
@@ -48,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="card card-outline card-primary">
             <div class="card-header text-center">
                 <a href="#" class="link-dark text-decoration-none">
-                    <h1 class="mb-0"><b>Universal</b>ERP</h1>
+                    <h1 class="mb-0"><b>University Hostel</b></h1>
                 </a>
             </div>
             <div class="card-body register-card-body">
@@ -89,6 +91,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="regNo">Student/Employee Reg No</label>
                         </div>
                         <div class="input-group-text"><span class="bi bi-upc-scan"></span></div>
+                    </div>
+
+                    <div class="input-group mb-3">
+                        <div class="form-floating">
+                            <input type="text" name="guardian_name" class="form-control" id="regGName" placeholder="">
+                            <label for="regGName">Father / Guardian Name</label>
+                        </div>
+                    </div>
+
+                    <div class="input-group mb-3">
+                        <div class="form-floating">
+                            <input type="text" name="emergency_contact" class="form-control" id="regEPhone" placeholder="">
+                            <label for="regEPhone">Emergency Contact No</label>
+                        </div>
                     </div>
 
                     <div class="input-group mb-3">

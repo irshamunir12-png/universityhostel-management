@@ -24,12 +24,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_fee'])) {
     $status = sanitize($_POST['status'] ?? 'Unpaid');
 
     if ($fee_id > 0) {
-        $stmt = $pdo->prepare("UPDATE student_fees SET user_id = ?, title = ?, amount = ?, paid_amount = ?, due_date = ?, status = ? WHERE id = ?");
+        $p_date_sql = ($status === 'Paid') ? ", paid_date = IFNULL(paid_date, CURDATE())" : "";
+        $stmt = $pdo->prepare("UPDATE student_fees SET user_id = ?, title = ?, amount = ?, paid_amount = ?, due_date = ?, status = ? $p_date_sql WHERE id = ?");
         $stmt->execute([$user_id, $title, $amount, $paid_amount, $due_date, $status, $fee_id]);
         $msg = "Fee record updated successfully.";
     } else {
-        $stmt = $pdo->prepare("INSERT INTO student_fees (user_id, title, amount, paid_amount, due_date, status) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$user_id, $title, $amount, $paid_amount, $due_date, $status]);
+        $p_date = ($status === 'Paid') ? date('Y-m-d') : null;
+        $stmt = $pdo->prepare("INSERT INTO student_fees (user_id, title, amount, paid_amount, due_date, status, paid_date) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $title, $amount, $paid_amount, $due_date, $status, $p_date]);
         $msg = "New fee assigned successfully.";
     }
     header("Location: manage_fees.php?success_msg=" . urlencode($msg));

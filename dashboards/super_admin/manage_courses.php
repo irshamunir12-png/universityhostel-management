@@ -2,16 +2,40 @@
 require_once '../../core/session.php'; 
 require_once '../../core/functions.php';
 
-// Auto-Fix: Ensure all required columns exist for the new UI
-try {
-    $pdo->query("SELECT instructor, duration, fee FROM courses LIMIT 1");
-} catch (Exception $e) {
-    $pdo->exec("ALTER TABLE courses 
-        ADD COLUMN instructor VARCHAR(100) DEFAULT NULL, 
-        ADD COLUMN duration VARCHAR(50) DEFAULT NULL, 
-        ADD COLUMN fee DECIMAL(10,2) DEFAULT 0,
-        ADD COLUMN category_id INT DEFAULT NULL");
+// --- DATABASE REPAIR: Ensure courses table exists and has all columns ---
+$pdo->exec("CREATE TABLE IF NOT EXISTS `courses` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `course_code` varchar(50) NOT NULL UNIQUE,
+  `course_name` varchar(255) NOT NULL,
+  `department` varchar(100) DEFAULT NULL,
+  `instructor` varchar(100) DEFAULT NULL,
+  `duration` varchar(50) DEFAULT NULL,
+  `fee` decimal(10,2) DEFAULT 0.00,
+  `category_id` int(11) DEFAULT NULL,
+  `is_deleted` tinyint(1) DEFAULT 0,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+// Ensure old tables get new columns (incase table existed but was outdated)
+try { $pdo->query("SELECT instructor FROM courses LIMIT 1"); } catch (Exception $e) {
+    $pdo->exec("ALTER TABLE courses ADD COLUMN instructor VARCHAR(100) DEFAULT NULL, ADD COLUMN duration VARCHAR(50) DEFAULT NULL, ADD COLUMN fee DECIMAL(10,2) DEFAULT 0, ADD COLUMN category_id INT DEFAULT NULL");
 }
+
+// --- DATABASE REPAIR: Ensure departments table exists for the dropdown ---
+$pdo->exec("CREATE TABLE IF NOT EXISTS `departments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `department_name` varchar(100) NOT NULL UNIQUE,
+  `is_deleted` tinyint(1) DEFAULT 0,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+// Seed departments if empty so the UI doesn't look broken
+$pdo->exec("INSERT IGNORE INTO departments (department_name) VALUES 
+('Computer Science'), ('Business Administration'), ('Electrical Engineering'), ('Mechanical Engineering')");
 
 // Auto-Fix: Ensure 'created_at' exists in users table for statistics
 try {
@@ -27,15 +51,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_course'])) {
     $name = sanitize($_POST['course_name']);
     $instructor = sanitize($_POST['instructor']);
     $duration = sanitize($_POST['duration']);
+    $category_id = (int)($_POST['category_id'] ?? 0);
 
     try {
+        // Check for duplicate course code (excluding the current course if editing)
+        $check = $pdo->prepare("SELECT id FROM courses WHERE course_code = ? AND id != ? AND is_deleted = 0");
+        $check->execute([$code, $id]);
+        if ($check->fetch()) {
+            throw new Exception("The Course ID '$code' is already assigned to another course.");
+        }
+
         if ($id > 0) {
-            $stmt = $pdo->prepare("UPDATE courses SET course_code = ?, course_name = ?, instructor = ?, duration = ? WHERE id = ?");
-            $stmt->execute([$code, $name, $instructor, $duration, $id]);
+            $stmt = $pdo->prepare("UPDATE courses SET course_code = ?, course_name = ?, instructor = ?, duration = ?, category_id = ? WHERE id = ?");
+            $stmt->execute([$code, $name, $instructor, $duration, $category_id ?: null, $id]);
             $msg = "Course updated successfully!";
         } else {
-            $stmt = $pdo->prepare("INSERT INTO courses (course_code, course_name, instructor, duration) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$code, $name, $instructor, $duration]);
+            $stmt = $pdo->prepare("INSERT INTO courses (course_code, course_name, instructor, duration, category_id) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$code, $name, $instructor, $duration, $category_id ?: null]);
             $msg = "New course registered successfully!";
         }
         header("Location: manage_courses.php?success_msg=" . urlencode($msg));
@@ -48,14 +80,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_course'])) {
 // Handle Delete Course
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-    $pdo->prepare("DELETE FROM courses WHERE id = ?")->execute([$id]);
+    $pdo->prepare("UPDATE courses SET is_deleted = 1, deleted_at = NOW() WHERE id = ?")->execute([$id]);
     header("Location: manage_courses.php?success_msg=Course deleted");
     exit;
 }
 
 // Fetch Data
 $departments = $pdo->query("SELECT * FROM departments WHERE is_deleted = 0 ORDER BY department_name")->fetchAll();
-$courses = $pdo->query("SELECT c.*, d.department_name as category_name FROM courses c LEFT JOIN departments d ON c.category_id = d.id ORDER BY c.course_code ASC")->fetchAll();
+$courses = $pdo->query("SELECT c.*, d.department_name as category_name FROM courses c LEFT JOIN departments d ON c.category_id = d.id WHERE c.is_deleted = 0 ORDER BY c.course_code ASC")->fetchAll();
 
 // Fetch Real-time Enrollment Data (Students registered per month)
 $enrollmentStats = array_fill(0, 12, 0);
@@ -130,7 +162,16 @@ require_once '../../includes/header.php';
                             <label class="stats-label">Course ID</label>
                             <input type="text" name="course_code" class="form-control underline-input" placeholder="e.g. CS-101" required>
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-md-4">
+                            <label class="stats-label">Department / Category</label>
+                            <select name="category_id" class="form-select underline-input">
+                                <option value="0">Select Department</option>
+                                <?php foreach($departments as $dept): ?>
+                                    <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['department_name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-12">
                             <label class="stats-label">Course Name</label>
                             <input type="text" name="course_name" class="form-control underline-input" placeholder="e.g. Advanced Web Development" required>
                         </div>
@@ -175,7 +216,7 @@ require_once '../../includes/header.php';
                 </thead>
                 <tbody>
                     <?php foreach($courses as $c): ?>
-                    <tr onclick="editCourse('<?= $c['id'] ?>', '<?= addslashes($c['course_code']) ?>', '<?= addslashes($c['course_name']) ?>', '<?= addslashes($c['instructor']) ?>', '<?= addslashes($c['duration']) ?>')" style="cursor:pointer;">
+                    <tr onclick="editCourse('<?= $c['id'] ?>', '<?= addslashes($c['course_code']) ?>', '<?= addslashes($c['course_name']) ?>', '<?= addslashes($c['instructor']) ?>', '<?= addslashes($c['duration']) ?>', '<?= $c['category_id'] ?>')" style="cursor:pointer;">
                         <td class="fw-bold text-primary"><?= htmlspecialchars($c['course_code']) ?></td>
                         <td class="fw-bold text-dark"><?= htmlspecialchars($c['course_name']) ?></td>
                         <td><?= htmlspecialchars($c['instructor'] ?? 'N/A') ?></td>
@@ -208,17 +249,29 @@ require_once '../../includes/header.php';
         document.querySelectorAll('.auto-hide').forEach(el => el.style.display = 'none');
     }, 5000);
 
-    // Chart Logic
-    const ctx = document.getElementById('enrollmentChart').getContext('2d');
-    new Chart(ctx, {
+    // Optimized Chart Logic with Gradients
+    const ctx = document.getElementById('enrollmentChart');
+    const chartCtx = ctx.getContext('2d');
+    
+    const gradient = chartCtx.createLinearGradient(0, 0, 0, 200);
+    gradient.addColorStop(0, 'rgba(46, 204, 113, 0.4)');
+    gradient.addColorStop(1, 'rgba(46, 204, 113, 0.0)');
+
+    new Chart(chartCtx, {
         type: 'line',
         data: {
             labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
             datasets: [{
                 label: 'New Enrollments',
                 data: <?= json_encode($enrollmentStats) ?>,
-                borderColor: '#007bff',
-                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                borderColor: '#2ecc71',
+                backgroundColor: gradient,
+                borderWidth: 3,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#2ecc71',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
                 tension: 0.4,
                 fill: true
             }]
@@ -229,12 +282,13 @@ require_once '../../includes/header.php';
         }
     });
 
-    function editCourse(id, code, name, instr, dur) {
+    function editCourse(id, code, name, instr, dur, catId) {
         document.getElementById('edit_course_id').value = id;
         document.getElementsByName('course_code')[0].value = code;
         document.getElementsByName('course_name')[0].value = name;
         document.getElementsByName('instructor')[0].value = instr;
         document.getElementsByName('duration')[0].value = dur;
+        document.getElementsByName('category_id')[0].value = catId || "0";
         
         document.getElementById('submitBtn').style.display = 'none';
         document.getElementById('updateBtn').style.display = 'inline-block';

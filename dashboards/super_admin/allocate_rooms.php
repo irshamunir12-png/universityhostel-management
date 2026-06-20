@@ -1,5 +1,5 @@
 <?php
-require_once '../../includes/header.php';
+require_once '../../core/session.php';
 require_once '../../core/functions.php';
 
 // Handle Vacate Room (Delete Allocation)
@@ -56,6 +56,8 @@ $allocations = $pdo->query("
     WHERE ra.is_active = 1
     ORDER BY ra.id DESC
 ")->fetchAll();
+
+require_once '../../includes/header.php';
 ?>
 
 <style>

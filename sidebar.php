@@ -45,7 +45,7 @@ function isTreeOpen($children) {
     <div class="sidebar-brand d-flex align-items-center justify-content-between px-3" style="background-color: #111827 !important;">
         <a href="<?= BASE_URL ?>" class="brand-link text-decoration-none">
             <i class="bi bi-grid-1x2-fill me-2 text-primary"></i>
-            <span class="brand-text fw-bold" style="letter-spacing: 1px;">UNIVERSAL<span class="text-primary">ERP</span></span>
+            <span class="brand-text fw-bold" style="letter-spacing: 1px;">University <span class="text-primary">Hostel</span></span>
         </a>
     </div>
     <div class="sidebar-wrapper">

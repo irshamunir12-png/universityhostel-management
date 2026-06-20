@@ -1,55 +1,118 @@
-# Universal Hostel ERP - Modern Management System
+# 🏨 University Hostel - Modern Management System
 
-A full-fledged, professional Desktop-style Web Application designed for University Hostel Operations. Built with PHP (PDO), MySQL, and AdminLTE 4.
+A full-fledged, professional AI-integrated Web Application designed for University Hostel Operations. Built with PHP 8 (PDO), MySQL, and AdminLTE 4.
 
-## 📂 Project Structure & Page Functionality
+> **⚠️ Note:** Is project ko setup karne ke liye sirf root folder mein maujood `database.sql` zaroori hai. Baaki tamaam `.sql` files aur `core/run_migrations.php` ko folder se delete kar diya gaya hai taake project clean rahe.
 
-### 🛠 System Administration
-*   **Manage Roles (`manage_roles.php`)**: Create and define system roles (Super Admin, Warden, Student, etc.).
-*   **Manage Pages (`manage_pages.php`)**: Dynamic sidebar manager to control menu items, icons, and hierarchy.
-*   **Access Matrix (`manage_access.php`)**: A permissions grid to toggle page access for different roles in real-time.
-*   **System Settings (`manage_settings.php`)**: Global configuration for system name, currency, and hostel curfew times.
+## ✨ Project Introduction
 
-### 🏢 Hostel Operations
-*   **Student Registration (`student_registration.php`)**: Dedicated enrollment form for adding new residents to the system.
-*   **Manage Users (`manage_users.php`)**: Centralized CRUD for Students and Staff members with profile tracking.
-*   **Manage Rooms (`manage_rooms.php`)**: Define buildings, room types (Student/Office), and capacity limits.
-*   **Allocate Rooms (`allocate_rooms.php`)**: Assign students to specific beds with automated occupancy tracking.
-*   **Mark Attendance (`mark_attendance.php`)**: Daily check-ins with leave status integration and Excel export.
-*   **Gate Management (`gate_management.php`)**: IN/OUT logs with real-time curfew alerts and "Currently Outside" monitoring.
-*   **Manage Mess (`manage_mess.php`)**: Weekly food menu management using a tagging system for breakfast, lunch, and dinner.
+The **University Hostel** is a cutting-edge, AI-powered management system developed to streamline and automate the complex operations of university hostels. Moving beyond traditional manual processes, this system offers a centralized, secure, and intelligent platform for managing students, rooms, fees, attendance, gate security, and assets. With its intuitive interface and advanced features like an AI Warden Assistant and real-time analytics, it aims to enhance efficiency, transparency, and overall student experience.
 
-### 💰 Finance & Helpdesk
-*   **Manage Fees (`manage_fees.php`)**: Assign fees, track partial payments, and monitor overdue balances.
-*   **Manage Complaints (`manage_complaints.php`)**: Admin ticket system to resolve student issues with priority levels.
-*   **Manage Leaves (`manage_leaves.php`)**: Professional workflow for approving or rejecting student leave applications.
-*   **Manage Announcements (`manage_announcements.php`)**: Create digital notices with expiry dates and live layout previews.
+## 📸 Screenshots
+Create a folder at `assets/img/screenshots/` and place your images there. Then update the links below:
+
+*(Please add your project screenshots here. For example:)*
+
+*   **Dashboard Overview:** ![Dashboard Overview](https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80)
+*   **Fee Management:** ![Fee Management](https://images.unsplash.com/photo-1554224155-1696413565d3?auto=format&fit=crop&w=800&q=80)
+*   **AI Assistant in Action:** ![AI Assistant in Action](https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=800&q=80)
+*   **Gate Management:** ![Gate Management](https://images.unsplash.com/photo-1555854817-cc3129cc4473?auto=format&fit=crop&w=800&q=80)
+
+## ⚙️ Installation & Setup
+
+Follow these steps to get the University Hostel ERP running on your local machine:
+
+### Prerequisites
+*   **XAMPP / WAMP / MAMP**: A local server environment (Apache, MySQL, PHP).
+*   **Git**: For cloning the repository.
+
+### 1. Clone the Repository
+If you are setting it up manually, just ensure the folder name is `Universityhostel` inside `htdocs`.
+```bash
+git clone [YOUR_GITHUB_REPOSITORY_URL] Universityhostel
+cd Universityhostel
+```
+
+### 2. Database Setup
+*   Open your web browser and go to `http://localhost/phpmyadmin`.
+*   Create a new database named **`universal_db`**.
+*   Import the `database.sql` file located in the project root into the `universal_db` database. This will create all necessary tables and populate initial data.
+
+### 3. Configure the Application
+*   Open `c:\xampp\htdocs\Universityhostel\core\config.php` in a text editor.
+    ```php
+    define('DB_HOST', 'localhost'); // Your database host
+    define('DB_NAME', 'universal_db'); // Ensure this matches your database name
+    define('DB_USER', 'root');         // Your MySQL username
+    define('DB_PASS', '');             // Your MySQL password (empty string '' if no password)
+    define('BASE_URL', 'http://localhost/Universityhostel/'); // Ensure this matches your project URL
+    ```
+
+### 4. Run the Application
+*   Start Apache and MySQL services from your XAMPP/WAMP/MAMP control panel.
+*   Open your web browser and navigate to `http://localhost/Universityhostel/`.
+
+## 🔑 Default Credentials
+For quick testing and initial setup, you can use the following credentials:
+
+| Role          | Email             | Password | Registration No. |
+| :------------ | :---------------- | :------- | :--------------- |
+| **Super Admin** | `admin@hostel.com`   | `123456` | *Administrator Access* |
+| **Warden**      | `warden@hostel.com`  | `123456` | *Staff Management*     |
+| **Student**     | `student@hostel.com` | `123456` | `ST-2024-001`          |
+
+---
+
+## 🚀 Key Features
+
+### 🛠 Core Management
+*   **User & Role Management**: Comprehensive CRUD for students, wardens, and super admins with dynamic role-based access control.
+*   **Room Management**: Define buildings, blocks, room types (student, staff, office), capacity, and washroom types.
+*   **Room Allocation**: Assign students to specific rooms and beds, with real-time occupancy tracking.
+*   **Student Registration**: Streamlined process for new student onboarding.
+
+### 🔒 Advanced Security & Gate Control
+*   **Gate Management**: Real-time logging of student IN/OUT movements, with automated curfew violation detection.
+*   **Visitor Management**: Track visitor details, purpose, and associated students.
+*   **Digital Student ID**: QR-code based student identification for quick verification.
+
+### 💰 Financial & Administrative
+*   **Fee Management**: Assign, track, and manage student fees with statuses like Unpaid, Partial, Paid, Pending Verification, and Rejected. Supports payment receipt uploads.
+*   **Complaint Management**: A robust ticketing system for students to lodge complaints, with priority levels and admin resolution workflow.
+*   **Leave Management**: Workflow for students to apply for leaves and for wardens to approve/reject them.
+*   **Announcements**: Digital notice board for official communications with expiry dates.
+
+### 🤖 AI & Automation
+*   **AI Warden Assistant**: An integrated AI (powered by OpenRouter API) to assist wardens in drafting formal notices, warnings, emails, and other administrative content.
+*   **Smart Suggestions**: AI provides context-aware suggestions for content generation.
+
+### 📊 Reporting & Analytics
+*   **Interactive Dashboard**: A high-level overview of hostel operations with key metrics and real-time charts (revenue, occupancy, complaints).
+*   **Detailed Reports**: Generate and export PDF reports for fee collection, attendance, room occupancy, and complaints.
+*   **Attendance Tracking**: Daily attendance marking with integration for approved leaves.
 
 ### 📦 Inventory & Assets
-*   **Inventory Stock (`manage_inventory.php`)**: Track consumable items like furniture, bulbs, or plumbing supplies.
-*   **Trackable Assets (`manage_assets.php`)**: Register high-value equipment (Laptops, Chairs) with unique Tag IDs.
-*   **Asset Allocation (`allocate_assets.php`)**: Issue specific assets to students or rooms and track return conditions.
+*   **Inventory Management**: Track consumable items (e.g., cleaning supplies, bulbs).
+*   **Asset Tracking**: Register and manage high-value assets (furniture, electronics) with unique asset tags.
+*   **Asset Allocation**: Allocate assets to students or rooms, tracking their condition upon issue and return.
 
 ### 🎓 Student Portal
-*   **My Room (`my_room.php`)**: View current allocation details and roommate info.
-*   **My Fees (`my_fees.php`)**: View due fees and upload payment receipts for admin verification.
-*   **My Complaints (`my_complaints.php`)**: Lodge issues and track resolution status.
-*   **Notice Board (`announcements.php`)**: Read official university announcements.
-*   **Profile (`profile.php`)**: Manage personal details, change password, and view "Digital Student ID" (QR Code).
+*   **Personalized Dashboard**: Students can view their room details, fee status, payment history, and lodge complaints.
+*   **Digital ID**: Access to their unique QR-code based digital ID.
+*   **Notice Board**: View all official announcements.
+
+## 💻 Tech Stack
+
+*   **Backend**: PHP 8 (with PDO for secure database interactions)
+*   **Database**: MySQL
+*   **Frontend**: HTML5, CSS3, JavaScript, Bootstrap 5, AdminLTE 4
+*   **Charting**: Chart.js
+*   **AI Integration**: OpenRouter API (Mistral, Gemini, Llama models)
+*   **PDF Generation**: html2pdf.js
 
 ---
 
-## 🔍 Missing Features (Identified Gaps)
-
-1.  **Guardian Information**: The registration form tracks the student but lacks "Emergency Contact" or "Parent/Guardian" details which are critical for hostels.
-2.  **Fee Ledger**: Currently, fees are per-entry. A "Total Ledger" or "Account Statement" for a student is missing.
-3.  **Automatic Fee Generation**: There is no logic to automatically generate monthly "Mess Charges" or "Rent" for all active students.
-4.  **Asset Audit Trail**: While we track current allocations, we don't have a history log of "Who used this chair before?" to track damages over time.
-5.  **Leave Attachment**: Students cannot upload "Doctor's Notes" or "Permissions" when applying for leave.
-
----
-
-## 🚀 Recommended Enhancements
+## 🚀 Future Enhancements
 
 ### 1. 📲 QR Code Integration (High Priority)
 *   Integrate the **Digital ID QR** with the **Gate Management** module. The warden should be able to scan a student's phone to automatically log them "IN" or "OUT".
@@ -70,6 +133,25 @@ A full-fledged, professional Desktop-style Web Application designed for Universi
 *   A module to manage hostel events, sports weeks, or maintenance schedules visible on the dashboard.
 
 ---
+
+## 📂 Project Structure
+
+```text
+Universityhostel/
+├── assets/               # CSS, JS, and Images (Bootstrap, AdminLTE, Avatars)
+├── core/                 # Backend Logic (Auth, Session, AI Handler, DB Connection)
+│   ├── ai_handler.php    # OpenRouter AI API Logic
+│   ├── auth.php          # Login/Registration Logic
+│   ├── config.php        # Database & URL Configuration
+│   └── db.php            # PDO Connection Instance
+├── dashboards/           # Role-based Modules
+│   └── super_admin/      # Admin-only management pages
+├── includes/             # Reusable UI Components (Header, Footer, Sidebar)
+├── database.sql          # SINGLE Database Schema File
+├── index.php             # Main Intelligence Dashboard
+├── login.php             # Secure Login Portal
+└── .gitignore            # Git exclusion rules
+```
 **Current Version:** 1.5 (Stable)  
-**Developed By:** Universal Team  
+**Developed By:** [Your Team Name]  
 **Theme:** Modern Desktop ERP (Navy/Green)

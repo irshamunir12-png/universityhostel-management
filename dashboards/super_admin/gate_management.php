@@ -50,14 +50,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['log_entry'])) {
 }
 
 // Data Fetching
-$q_search = $_GET['q'] ?? '';
-$students = [];
-if (!empty($q_search)) {
-    $search_val = '%' . sanitize($q_search) . '%';
-    $stmt = $pdo->prepare("SELECT id, name, registration_no FROM users WHERE (name LIKE ? OR registration_no LIKE ?) AND role = 'student' AND is_active = 1 AND is_deleted = 0");
-    $stmt->execute([$search_val, $search_val]);
-    $students = $stmt->fetchAll();
-}
+// Fetch ALL active students with their LATEST gate status
+$students = $pdo->query("
+    SELECT u.id, u.name, u.registration_no,
+           (SELECT log_type FROM gate_log WHERE user_id = u.id ORDER BY log_time DESC LIMIT 1) as current_status,
+           (SELECT log_time FROM gate_log WHERE user_id = u.id ORDER BY log_time DESC LIMIT 1) as last_activity
+    FROM users u 
+    WHERE u.role = 'student' AND u.is_active = 1 AND u.is_deleted = 0
+    ORDER BY u.name ASC
+")->fetchAll();
 
 $out_students = $pdo->query("SELECT u.name, u.registration_no, r.room_no, gl.log_time FROM users u JOIN (SELECT user_id, MAX(log_time) as max_t FROM gate_log GROUP BY user_id) latest ON u.id = latest.user_id JOIN gate_log gl ON gl.user_id = latest.user_id AND gl.log_time = latest.max_t LEFT JOIN room_allocations ra ON u.id = ra.user_id AND ra.is_active = 1 LEFT JOIN rooms r ON ra.room_id = r.id WHERE gl.log_type = 'out' AND u.role = 'student' ORDER BY gl.log_time ASC")->fetchAll();
 $today_log = $pdo->query("SELECT gl.*, u.name FROM gate_log gl JOIN users u ON gl.user_id = u.id WHERE DATE(gl.log_time) = CURDATE() ORDER BY gl.log_time DESC")->fetchAll();
@@ -159,30 +160,38 @@ $stats_today = $pdo->query("SELECT
                 <?php if(isset($success)): ?><div class="alert alert-success rounded-3 auto-hide"><?= $success ?></div><?php endif; ?>
                 <?php if(isset($error)): ?><div class="alert alert-danger rounded-3 auto-hide"><?= $error ?></div><?php endif; ?>
 
-                <form method="get" class="mb-4">
-                    <label class="text-muted small fw-bold text-uppercase">Student Lookup</label>
-                    <div class="d-flex gap-2">
-                        <input type="text" name="q" class="underline-input" placeholder="Enter Registration No..." value="<?= htmlspecialchars($q_search) ?>" required>
-                        <button class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm">FIND</button>
-                    </div>
-                </form>
+                <div class="mb-4">
+                    <label class="text-muted small fw-bold text-uppercase">Quick Search Student</label>
+                    <input type="text" id="gateStudentSearch" class="underline-input" placeholder="Start typing name or ID...">
+                </div>
 
-                <?php if (!empty($students)): ?>
-                    <div class="list-group list-group-flush rounded-3 border shadow-sm mb-4">
+                <div class="table-responsive rounded-3 border shadow-sm" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-hover mb-0" id="masterGateTable">
+                        <thead class="sticky-top bg-white">
+                            <tr class="small text-muted"><th>STUDENT</th><th class="text-center">ACTION</th></tr>
+                        </thead>
+                        <tbody>
                         <?php foreach($students as $s): ?>
-                        <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                            <div><strong><?= htmlspecialchars($s['name']) ?></strong><br><small class="text-muted"><?= htmlspecialchars($s['registration_no']) ?></small></div>
-                            <form method="post" class="d-flex gap-2">
-                                <input type="hidden" name="user_id" value="<?= $s['id'] ?>">
-                                <button type="submit" name="log_entry" value="out" class="btn-warning-rounded shadow-sm">OUT</button>
-                                <button type="submit" name="log_entry" value="in" class="btn-save-green shadow-sm">IN</button>
-                            </form>
-                        </div>
+                        <tr class="align-middle">
+                            <td>
+                                <div class="fw-bold"><?= htmlspecialchars($s['name']) ?></div>
+                                <small class="text-muted"><?= htmlspecialchars($s['registration_no']) ?></small>
+                                <?php if($s['current_status'] === 'out'): ?>
+                                    <br><span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:0.65rem;">CURRENTLY OUTSIDE</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-center">
+                                <form method="post" class="d-flex justify-content-center gap-1">
+                                    <input type="hidden" name="user_id" value="<?= $s['id'] ?>">
+                                    <button type="submit" name="log_entry" value="out" class="btn btn-sm <?= $s['current_status'] === 'out' ? 'btn-outline-secondary opacity-50' : 'btn-warning' ?> rounded-pill px-3 fw-bold shadow-sm" style="min-width: 70px;">OUT</button>
+                                    <button type="submit" name="log_entry" value="in" class="btn btn-sm <?= $s['current_status'] !== 'out' ? 'btn-outline-secondary opacity-50' : 'btn-success' ?> rounded-pill px-3 fw-bold shadow-sm" style="min-width: 70px;">IN</button>
+                                </form>
+                            </td>
+                        </tr>
                         <?php endforeach; ?>
-                    </div>
-                <?php elseif(!empty($q_search)): ?>
-                    <div class="alert alert-warning rounded-3">No student found matching that ID.</div>
-                <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
 
                 <?php if(!empty($late_comers)): ?>
                 <div class="p-3 bg-danger-subtle rounded-3 border border-danger-subtle mt-4">
@@ -256,9 +265,24 @@ $stats_today = $pdo->query("SELECT
     setInterval(updateClockApp, 1000);
     updateClockApp();
 
-    setTimeout(() => {
-        document.querySelectorAll('.auto-hide').forEach(el => el.style.display = 'none');
-    }, 5000);
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            document.querySelectorAll('.auto-hide').forEach(el => el.style.display = 'none');
+        }, 5000);
+
+        // Real-time Search Logic
+        const searchInput = document.getElementById('gateStudentSearch');
+        if(searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                let filter = this.value.toLowerCase();
+                let rows = document.querySelectorAll('#masterGateTable tbody tr');
+                rows.forEach(row => {
+                    let text = row.innerText.toLowerCase();
+                    row.style.display = text.includes(filter) ? '' : 'none';
+                });
+            });
+        }
+    });
 </script>
 
 <?php require_once '../../includes/footer.php'; ?>

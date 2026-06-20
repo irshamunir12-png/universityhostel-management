@@ -1,0 +1,11 @@
+# Ignore OS generated files
+.DS_Store
+Thumbs.db
+
+# Ignore XAMPP/IDE configs
+.vscode/
+.idea/
+nbproject/
+
+# Keep logs and uploads but ignore content if needed
+# uploads/*

@@ -9,7 +9,7 @@ class Auth {
     }
 
     /**
-     * Universal Login: Accepts Email, CNIC, or Reg No
+     * Residential Login: Accepts Email, CNIC, or Reg No
      */
     public function login($identifier, $password) {
         // Query checks all 3 columns simultaneously
@@ -55,8 +55,8 @@ class Auth {
 
         $hash = password_hash($data['password'], PASSWORD_DEFAULT);
         
-        $sql = "INSERT INTO users (name, email, password, role, identity_no, registration_no, is_active) 
-                VALUES (?, ?, ?, ?, ?, ?, 1)"; // Changed from 0 to 1 to auto-activate
+        $sql = "INSERT INTO users (name, email, password, role, identity_no, registration_no, guardian_name, emergency_contact, is_active) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)"; // Changed from 0 to 1 to auto-activate
         
         try {
             $stmt = $this->pdo->prepare($sql);
@@ -66,7 +66,9 @@ class Auth {
                 $hash, 
                 $data['role'], 
                 $data['identity_no'], 
-                $data['registration_no']
+                $data['registration_no'],
+                $data['guardian_name'] ?? null,
+                $data['emergency_contact'] ?? null
             ]);
             return true;
         } catch (PDOException $e) {

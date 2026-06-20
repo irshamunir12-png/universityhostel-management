@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
 
 -- Insert default settings if they don't exist
 INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES
-('system_name', 'Universal Hostel System'),
+('system_name', 'Residential Hostel System'),
 ('footer_text', 'Copyright © 2024. All rights reserved.');
 
 -- 2. Register the new settings page under 'System Admin' (parent_id = 2)
